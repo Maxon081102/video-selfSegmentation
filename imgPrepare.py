@@ -12,11 +12,11 @@ def img_prepare(img_name, transform):
     output = transform({'image': img, 'mask': img_mask})
     return output["image"], output["mask"]
 
-def create_img_transform(size):
+def create_img_transform(size, val=False):
     return tf.Compose([
         ToTensor(),
-        ResizeOrRandomCrop(size),
-        Rotate()
+        ResizeOrRandomCrop(size, val),
+        Rotate(val)
     ])
 
 def get_img_mask(img_name):
@@ -34,8 +34,9 @@ class ToTensor(object):
                 'mask': sample['mask']}
 
 class ResizeOrRandomCrop(object):
-    def __init__(self, output_size):
+    def __init__(self, output_size, val):
         assert isinstance(output_size, (int, tuple))
+        self.val = val
         if isinstance(output_size, int):
             self.output_size = (output_size, output_size)
         else:
@@ -46,7 +47,7 @@ class ResizeOrRandomCrop(object):
     def __call__(self, sample):
         image, mask = sample['image'], sample['mask'] 
         resize = np.random.randint(0, 10) <= 6
-        if resize:
+        if resize or self.val:
             image = self.resize(image)
             mask = self.resize(mask[None])[0]
         else:
@@ -65,7 +66,12 @@ class ResizeOrRandomCrop(object):
         return {'image': image, 'mask': mask}
 
 class Rotate(object):
+    def __init__(self, val):
+        self.val = val
+
     def __call__(self, sample):
+        if self.val:
+            return sample
         image, mask = sample['image'], sample['mask']
         k = np.random.randint(0, 4)
         image = torch.rot90(image, k=k, dims=[1, 2])

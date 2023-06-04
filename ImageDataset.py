@@ -3,24 +3,25 @@ import torch
 import numpy as np
 
 from torch.utils.data import Dataset, DataLoader
-from tqdm.notebook import tqdm
+# from tqdm.notebook import tqdm
 from imgPrepare import img_prepare
 
 class ImageDataset(Dataset):
-    def __init__(self, img_names, img_prepare, transform):
-        self.data = []
-        for img_name in tqdm(img_names):
-            img, mask = img_prepare(img_name, transform)
-            self.data.append((img, mask))
+    def __init__(self, img_names, img_prepare, transform, annotate=False, use_filter=False, only_img=False):
+        self.data = img_names
+        self.img_prepare = img_prepare
+        self.transform = transform
+        self.annotate = annotate
+        self.use_filter = use_filter
+        self.only_img = only_img
 
     def __getitem__(self, index):
-        img, mask = self.data[index]
-        return img, mask
+        return self.img_prepare(self.data[index], self.transform, self.annotate, self.use_filter, self.only_img)
 
     def __len__(self):
         return len(self.data)
 
-def get_img_for_train_and_val(data_folder, p=0.7, seed=777, img_count=100000):
+def get_img_for_train_and_val(data_folder, p=0.9, seed=777, img_count=100000):
     train = []
     test = []
     np.random.seed(seed)
@@ -36,5 +37,13 @@ def get_img_for_train_and_val(data_folder, p=0.7, seed=777, img_count=100000):
 
 def collate_fn(batch):
     img_batch = torch.stack([elem[0] for elem in batch])
+    if type(batch[0][1]) == bool:
+        mask_batch = torch.Tensor([elem[1] for elem in batch])
+        return img_batch, mask_batch
+
     mask_batch = torch.stack([elem[1] for elem in batch])
+
+    if len(batch[-1]) == 3:
+        annotate_batch = torch.stack([elem[2] for elem in batch])
+        return img_batch, mask_batch, annotate_batch
     return img_batch, mask_batch

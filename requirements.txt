@@ -1,0 +1,7 @@
+numpy
+torch
+transformers
+cv2
+torchvision
+matplotlib
+ipython
